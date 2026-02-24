@@ -1,7 +1,21 @@
-export { default } from "next-auth/middleware";
+import { withAuth } from "next-auth/middleware";
 
-// This determines which routes are protected. 
-// It locks down the entire app EXCEPT for the login page, api routes, and static files.
+// Explicitly export the middleware function Next.js expects
+export default withAuth({
+  pages: {
+    signIn: "/login", // Tells NextAuth to route unauthenticated users here
+  },
+});
+
 export const config = {
-  matcher: ["/((?!login|api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    /*
+     * Protects all routes EXCEPT:
+     * - api routes
+     * - static files & images
+     * - favicon
+     * - the login page itself
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico|login).*)",
+  ],
 };
