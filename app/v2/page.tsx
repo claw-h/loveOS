@@ -148,22 +148,22 @@ const CommandRack = ({ activeTab, setActiveTab }: { activeTab: TabId | null, set
 
     return (
         <motion.div 
-            className="fixed left-0 top-0 h-full w-[280px] z-[100] flex items-center will-change-transform"
+            className="fixed left-0 top-0 h-full w-70 z-100 flex items-center will-change-transform"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             animate={{ x: isHovered ? 0 : -280 }} 
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            transition={{ type: "spring", stiffness: 300, damping: 50 }}
         >
-            <div className="absolute right-[-24px] top-1/2 -translate-y-1/2 w-[24px] h-[140px] cursor-crosshair flex items-center group pointer-events-auto">
+            <div className="absolute right-[-24px] top-1/2 -translate-y-1/2 w-[24px] h-[200px] cursor-crosshair flex items-center group pointer-events-auto">
                 <motion.div 
                     animate={{ 
                         backgroundColor: isHovered ? 'rgba(255,255,255,0)' : 'rgba(10,10,10,0.95)',
-                        borderColor: isHovered ? 'rgba(255,255,255,0)' : 'rgba(255,255,255,0.1)'
+                        borderColor: isHovered ? 'rgba(255,255,255,0)' : 'rgba(255,255,255,0.6)'
                     }}
-                    className="w-[18px] h-full rounded-r-[8px] border-y border-r flex flex-col items-center justify-center gap-[6px] backdrop-blur-md shadow-[5px_0_15px_rgba(0,0,0,0.6)] transition-colors duration-300"
+                    className="w-5 h-full rounded-r-[8px] border-y border-r flex flex-col items-center justify-center gap-[16px] backdrop-blur-md shadow-[5px_0_15px_rgba(0,0,0,0.6)] transition-colors duration-300"
                 >
                     <div className="w-[2px] h-[12px] bg-white/20 rounded-full" />
-                    <div className="w-[2px] h-[12px] bg-[var(--accent)] rounded-full shadow-[0_0_8px_var(--accent)] animate-pulse" />
+                    <div className="w-2 h-[16px] bg-[var(--accent)] rounded-full shadow-[0_0_8px_var(--accent)] animate-pulse" />
                     <div className="w-[2px] h-[12px] bg-white/20 rounded-full" />
                 </motion.div>
             </div>
