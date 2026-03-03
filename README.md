@@ -1,6 +1,6 @@
-# 🌌 loveOS: The MAHI Portal
+# 🌌 loveOS: The [lover] Portal
 
-Welcome to **loveOS**, a highly personalized, sci-fi-inspired relationship dashboard and secure comms link. Built as a dedicated portal for "Commander Mahi," this project blends high-tech terminal aesthetics with deeply sentimental features. 
+Welcome to **loveOS**, a highly personalized, sci-fi-inspired relationship dashboard and secure comms link. Built as a dedicated portal for my "Commander-in-chief," this project blends high-tech terminal aesthetics with deeply sentimental features. 
 
 It is more than just a website; it is an interactive, real-time connection hub bridging the gap between two people using cinematic UI, live database syncing, AI integrations, and immersive web animations.
 
