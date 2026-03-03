@@ -158,13 +158,15 @@ const CommandRack = ({ activeTab, setActiveTab }: { activeTab: TabId | null, set
                 <motion.div 
                     animate={{ 
                         backgroundColor: isHovered ? 'rgba(255,255,255,0)' : 'rgba(10,10,10,0.95)',
-                        borderColor: isHovered ? 'rgba(255,255,255,0)' : 'rgba(255,255,255,0.6)'
+                        borderColor: isHovered ? 'rgba(255,255,255,0)' : 'rgba(255,255,255,0.8)'
                     }}
-                    className="w-5 h-full rounded-r-[8px] border-y border-r flex flex-col items-center justify-center gap-[16px] backdrop-blur-md shadow-[5px_0_15px_rgba(0,0,0,0.6)] transition-colors duration-300"
+                    className="w-5 h-full rounded-r-[7px] border-y border-r flex flex-col items-center justify-center gap-[24px] backdrop-blur-md shadow-[5px_0_15px_rgba(0,0,0,0.6)] transition-colors duration-300"
                 >
-                    <div className="w-[2px] h-[12px] bg-white/20 rounded-full" />
-                    <div className="w-2 h-[16px] bg-[var(--accent)] rounded-full shadow-[0_0_8px_var(--accent)] animate-pulse" />
-                    <div className="w-[2px] h-[12px] bg-white/20 rounded-full" />
+                    <div className="w-[2px] h-[16px] bg-[var(--accent)]/40 rounded-full" />
+                    <div className="w-[2px] h-[20px] bg-[var(--accent)]/60 rounded-full" />
+                    <div className="w-2 h-[12px] bg-[var(--accent)] rounded-full shadow-[0_0_8px_var(--accent)] animate-pulse" />
+                    <div className="w-[2px] h-[20px] bg-[var(--accent)]/60 rounded-full" />
+                    <div className="w-[2px] h-[16px] bg-[var(--accent)]/40 rounded-full" />
                 </motion.div>
             </div>
 
@@ -696,7 +698,7 @@ export default function DashboardPageV2() {
                         <div className="relative perspective-[1000px] w-[320px] h-[70px] flex items-center">
                             <h1 className="flex items-center gap-2 drop-shadow-lg">
                                 <span className="font-gothic text-[56px] tracking-tighter uppercase leading-none text-[#F5F5F0] mt-1.5">MAHI</span>
-                                <motion.span className="font-victorian text-[64px] tracking-tight leading-none transition-colors duration-500" animate={{ textShadow: ['0 0 10px var(--accent)', '0 0 40px var(--accent)', '0 0 10px var(--accent)'] }} transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }} style={{ color: 'var(--accent)' }}>Portal</motion.span>
+                                <motion.span className="font-victorian text-[64px] tracking-tight leading-none transition-colors duration-500" animate={{ textShadow: ['0 0 10px var(--accent)', '0 0 40px var(--accent)', '0 0 10px var(--accent)']}} transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }} style={{ color: 'var(--accent)' }}>Portal</motion.span>
                             </h1>
                         </div>
                     </div>
