@@ -4,7 +4,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
 import { signOut } from 'next-auth/react';
+import TopControls from '@/components/TopControls';
 
+<header><TopControls role="admin" />
+</header>
 // Initialize Supabase Mainframe
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -74,6 +77,8 @@ export default function BoyfriendDashboard() {
     const [memoryDate, setMemoryDate] = useState(new Date().toISOString().split('T')[0]);
     const [isUploadingMemory, setIsUploadingMemory] = useState(false);
     const [memoryStatus, setMemoryStatus] = useState("");
+    const [memoryCluster, setMemoryCluster] = useState("");
+    const [clusterOptions, setClusterOptions] = useState<string[]>([]);
 
     const [girlfriendPing, setGirlfriendPing] = useState(false);
 
@@ -84,6 +89,12 @@ export default function BoyfriendDashboard() {
 
     useEffect(() => {
         setIsMounted(true);
+        // Fetch distinct cluster names for the dropdown
+        supabase.from('memories').select('cluster_name').then(({ data }) => {
+            if (!data) return;
+            const names = [...new Set(data.map((r: any) => r.cluster_name).filter(Boolean))] as string[];
+            setClusterOptions(names.sort());
+        });
     }, []);
 
     useEffect(() => {
@@ -162,7 +173,7 @@ export default function BoyfriendDashboard() {
     // 🚀 NEW: Memory Upload Handler
     const handleMemoryUpload = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!memoryFile || !memoryCaption) return;
+        if (!memoryFile) return;
 
         setIsUploadingMemory(true);
         setMemoryStatus("UPLOADING TO STORAGE...");
@@ -190,8 +201,11 @@ export default function BoyfriendDashboard() {
                 .from('memories')
                 .insert([{ 
                     image_url: publicUrl, 
-                    caption: memoryCaption, 
-                    memory_date: memoryDate 
+                    caption: memoryCaption,
+                    title: memoryCaption,
+                    memory_date: memoryDate,
+                    cluster_name: memoryCluster || null,
+                    decay: 1.0,
                 }]);
 
             if (dbError) throw dbError;
@@ -199,6 +213,7 @@ export default function BoyfriendDashboard() {
             setMemoryStatus("MEMORY VAULT SYNCED.");
             setMemoryFile(null);
             setMemoryCaption("");
+            setMemoryCluster("");
             
             // Reset the file input visually
             const fileInput = document.getElementById('memory-file') as HTMLInputElement;
@@ -263,20 +278,13 @@ export default function BoyfriendDashboard() {
                         </div>
                         <div>
                             <h1 className="text-xl font-extrabold tracking-tighter flex items-center gap-2">
-                                SYS_ADMIN <span className="font-mono text-[9px] px-2 py-0.5 rounded-full border border-[var(--accent)] text-[var(--accent)] bg-white/[0.05]">CONSOLE</span>
+                                ADMIN <span className="font-mono text-[9px] px-2 py-0.5 rounded-full border border-[var(--accent)] text-[var(--accent)] bg-white/[0.05]">CONSOLE</span>
                             </h1>
-                            <p className="font-mono text-[10px] opacity-60 uppercase tracking-widest mt-1">Role: Boyfriend // Clearance: LEVEL_MAX</p>
+                            <p className="font-mono text-[10px] opacity-60 uppercase tracking-widest mt-1">Role: Boyfriend | Clearance: LEVEL_MAX</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-6">
-                        <div className="text-right font-mono hidden sm:block">
-                            <div className="text-2xl font-bold tracking-tighter text-[var(--accent)]" style={{ textShadow: '0 0 10px var(--accent)' }}>{currentTime || "00:00:00"}</div>
-                            <div className="text-[10px] opacity-50 uppercase tracking-widest">LOCAL_TIME</div>
-                        </div>
-                        <button onClick={() => signOut({ callbackUrl: '/login' })} className="p-3 rounded-xl border border-white/10 hover:border-red-500/50 bg-white/5 hover:bg-red-500/10 transition-all duration-300">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/50 hover:text-red-400"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>
-                        </button>
-                    </div>
+                                       <TopControls  role="admin"/>
+
                 </motion.header>
 
                 {/* DESKTOP WORKSPACE */}
@@ -379,8 +387,36 @@ export default function BoyfriendDashboard() {
                                         onChange={(e) => setMemoryCaption(e.target.value)}
                                         onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
                                         onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
-                                        required
                                     />
+                                </div>
+
+                                {/* Cluster selector */}
+                                <div>
+                                    <label className="font-mono text-[10px] uppercase text-white/50 tracking-widest pl-1 mb-2 block">Cluster:</label>
+                                    <div className="flex gap-2">
+                                        <select
+                                            className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 font-mono text-sm focus:outline-none transition-all text-white/90 appearance-none"
+                                            value={memoryCluster}
+                                            onChange={(e) => setMemoryCluster(e.target.value)}
+                                            onFocus={(e) => (e.target.style.borderColor = 'var(--accent)')}
+                                            onBlur={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                                        >
+                                            <option value="">— No cluster —</option>
+                                            {clusterOptions.map(name => (
+                                                <option key={name} value={name}>{name}</option>
+                                            ))}
+                                        </select>
+                                        {/* Inline input to create a new cluster name */}
+                                        <input
+                                            type="text"
+                                            className="w-36 bg-black/40 border border-white/10 rounded-xl p-3 font-mono text-sm focus:outline-none transition-all text-white/90 placeholder:text-white/20"
+                                            placeholder="New cluster…"
+                                            value={clusterOptions.includes(memoryCluster) ? "" : memoryCluster}
+                                            onChange={(e) => setMemoryCluster(e.target.value)}
+                                            onFocus={(e) => (e.target.style.borderColor = 'var(--accent)')}
+                                            onBlur={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                                        />
+                                    </div>
                                 </div>
 
                                 <div className="flex flex-col md:flex-row gap-4">
@@ -396,7 +432,7 @@ export default function BoyfriendDashboard() {
                                     </div>
                                     <button 
                                         type="submit" 
-                                        disabled={isUploadingMemory || !memoryFile || !memoryCaption} 
+                                        disabled={isUploadingMemory || !memoryFile} 
                                         className="mt-auto px-6 py-3 rounded-xl text-black font-bold font-mono text-[10px] uppercase tracking-widest transition-all duration-300 disabled:opacity-50 h-[46px]" 
                                         style={{ backgroundColor: 'var(--accent)', boxShadow: '0 0 15px -5px var(--accent)' }}
                                     >

@@ -5,6 +5,12 @@ import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from
 import { createClient } from '@supabase/supabase-js';
 import CelestialEvents from '@/components/CelestialEvents';
 import TopControls from '@/components/TopControls';
+import ChronographEngine   from '@/components/Chronographengine';
+import TransmissionArchive from '@/components/Transmissionarchive';
+import Link from 'next/link';
+import VaultPortal from '@/components/VaultPortal';
+import MissionControlConsole from '@/components/MissionControlConsole';
+import SystemVitals from '@/components/SystemVitals';
 
 // Initialize Supabase
 const supabase = createClient(
@@ -16,11 +22,11 @@ const START_DATE = new Date("2023-01-01");
 const charMap: Record<string, string> = { 'a':'❤️','b':'💖','c':'💗','d':'💓','e':'💞','f':'💕','g':'💌','h':'💘','i':'💝','j':'💟','k':'❤️‍🔥','l':'🏩','m':'💒','n':'👰','o':'💍','p':'💎','q':'🌹','r':'🌷','s':'🌻','t':'🌼','u':'🎈','v':'🎁','w':'🎀','x':'🧸','y':'✨','z':'🌟',' ':'  ' };
 
 const moods = [
-    { label: "OPTIMAL", color: "#F59E0B", emoji: "✧", message: "All systems nominal." }, 
-    { label: "ANXIOUS", color: "#A78BFA", emoji: "≈", message: "Running background defrag." }, 
-    { label: "LOW POWER", color: "#D4D4D8", emoji: "☾", message: "Battery depleted. Resting." }, 
-    { label: "CRITICAL", color: "#DC2626", emoji: "⚠", message: "Core overheat. Hugs required." }, 
-    { label: "MISSING_ADMIN", color: "#14B8A6", emoji: "⍙", message: "Searching for connection..." } 
+    { label: "OPTIMAL", color: "#F59E0B", emoji: "✧", message: "All systems nominal.", intensity: 0.95 }, 
+    { label: "ANXIOUS", color: "#A78BFA", emoji: "≈", message: "Running background defrag.", intensity: 0.75 }, 
+    { label: "LOW POWER", color: "#D4D4D8", emoji: "☾", message: "Battery depleted. Resting.", intensity: 0.4 }, 
+    { label: "CRITICAL", color: "#DC2626", emoji: "⚠", message: "Core overheat. Hugs required.", intensity: 1.0 }, 
+    { label: "MISSING_ADMIN", color: "#14B8A6", emoji: "⍙", message: "Searching for connection...", intensity: 0.6 } 
 ];
 
 type TabId = 'uptime' | 'directive' | 'comm' | 'vault';
@@ -599,25 +605,12 @@ export default function DashboardPageV2() {
         switch (tabId) {
             case 'uptime':
                 return (
-                    <div className="h-full flex flex-col items-center justify-center p-8 relative overflow-hidden">
-                        <motion.div initial={{ opacity: 0, scale: 0.8, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.8, type: "spring" }} className="text-8xl md:text-[14rem] font-black tracking-tighter font-sans drop-shadow-[0_0_80px_rgba(232,222,181,0.2)] text-[#E8DEB5] relative z-10 will-change-transform">
-                            {days}<span className="text-4xl text-[#F5F5F0]/20 ml-4 tracking-normal">d</span>
-                        </motion.div>
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="font-sans font-bold text-lg tracking-[0.8em] uppercase text-[#F5F5F0]/50 mt-4 relative z-10 drop-shadow-md">Core_Uptime</motion.div>
-                    </div>
+                    <ChronographEngine mood={currentMood} />
                 );
             case 'directive':
                 return (
-                    <div className="h-full flex flex-col justify-center p-12 md:p-24 relative overflow-hidden">
-                        <div className="absolute top-[-5%] left-[5%] text-[30rem] opacity-[0.02] font-black text-[#F5F5F0] pointer-events-none leading-none">"</div>
-                        <motion.h2 initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2, duration: 0.8 }} className="text-4xl md:text-7xl font-black uppercase tracking-tighter text-[#F5F5F0] leading-tight relative z-10 drop-shadow-2xl max-w-5xl">
-                            "{quote.text}"
-                        </motion.h2>
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="mt-16 font-sans font-bold text-xs text-[#E8DEB5] flex items-center gap-6 uppercase tracking-[0.4em] z-10">
-                            <span className="w-24 h-[1px] bg-[#E8DEB5]/50"></span>
-                            AUTHORIZATION: {quote.author}
-                        </motion.div>
-                    </div>
+                    <TransmissionArchive accentColor={currentMood.color} />
+
                 );
             case 'comm':
                 return (
@@ -637,9 +630,7 @@ export default function DashboardPageV2() {
                     </div>
                 );
             case 'vault':
-                return (
-                    <ConstellationVault memories={allMemories} selectedMemory={selectedMemory} setSelectedMemory={setSelectedMemory} />
-                );
+                return <VaultPortal memoryCount={allMemories.length} accentColor={currentMood.color} />;
         }
     };
 
@@ -674,7 +665,7 @@ export default function DashboardPageV2() {
             <div className="absolute inset-[-10%] w-[120%] h-[120%] pointer-events-none z-0">
                 <div className="absolute inset-0 bg-[#07040D]" />
                 <OrganicStars isWarp={pinging} />
-                <CelestialEvents />
+                <CelestialEvents moodLabel={currentMood.label} />
             </div>
 
             <div className="pointer-events-none absolute inset-0 z-40 bg-[radial-gradient(circle_at_center,transparent_0%,#030108_120%)] opacity-80" />
@@ -727,37 +718,12 @@ export default function DashboardPageV2() {
 
                     <div className="w-full md:w-[300px] flex flex-col h-full gap-5 shrink-0 z-20 overflow-y-auto custom-scroll pr-1">
                         
-                        <AtmosphericCard moodFlash={moodFlash} className="flex-1 min-h-[250px]">
-                            <div className="w-full border-b border-white/[0.08] px-6 py-4 flex justify-between items-center bg-gradient-to-b from-white/5 to-transparent">
-                                <span className="font-sans font-bold tracking-[0.3em] text-[8px] uppercase text-[#F5F5F0]/50">Atmosphere_Ctrl</span>
-                            </div>
-                            <div className="flex-1 overflow-y-auto custom-scroll p-4 flex flex-col gap-3">
-                                {moods.map((m, i) => (
-                                    <motion.button 
-                                        initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 * i }}
-                                        key={m.label} onClick={() => handleMoodChange(m)}
-                                        className={`w-full flex items-center justify-between p-4 rounded-[1.2rem] border transition-all duration-300 ${currentMood.label === m.label ? 'bg-white/10 shadow-[inset_0_0_20px_rgba(255,255,255,0.05)] backdrop-blur-md' : 'border-transparent bg-transparent hover:bg-white/5'}`}
-                                        style={{ borderColor: currentMood.label === m.label ? 'var(--accent)' : 'transparent' }}
-                                    >
-                                        <span className={`font-sans font-black text-[9px] uppercase tracking-[0.2em] ${currentMood.label === m.label ? 'text-[var(--accent)] drop-shadow-[0_0_8px_var(--accent)]' : 'text-[#F5F5F0]/70'}`}>{m.label}</span>
-                                        <span className="text-sm">{m.emoji}</span>
-                                    </motion.button>
-                                ))}
-                            </div>
-                        </AtmosphericCard>
+                        <MissionControlConsole currentMood={currentMood} onMoodChange={handleMoodChange} />
 
-                        <AtmosphericCard moodFlash={moodFlash} className="h-[180px] shrink-0">
-                            <div className="w-full border-b border-white/[0.08] px-6 py-4 flex justify-between items-center bg-gradient-to-b from-white/5 to-transparent">
-                                <span className="font-sans font-bold tracking-[0.3em] text-[8px] uppercase text-[#F5F5F0]/50">System_Vitals</span>
-                            </div>
-                            <div className="flex flex-col p-6 gap-4 h-full relative">
-                                <div className="flex justify-between items-center border-b border-white/10 pb-3">
-                                    <span className="font-sans font-bold text-[9px] text-[#F5F5F0]/60 uppercase tracking-[0.2em]">Affection_Cap</span>
-                                    <span className="font-sans font-black text-[10px] text-[var(--accent)] transition-colors duration-500 drop-shadow-[0_0_8px_var(--accent)]">99.9%</span>
-                                </div>
-                                <SupernovaLaunchSwitch onLaunch={sendHug} isLaunching={pinging} />
-                            </div>
-                        </AtmosphericCard>
+                        <AtmosphericCard moodFlash={moodFlash} className="flex-1 shrink-0 min-h-[260px]">
+  <SystemVitals currentMood={currentMood} onLaunch={sendHug} isLaunching={pinging} />
+</AtmosphericCard>
+
                     </div>
 
                 </div>
