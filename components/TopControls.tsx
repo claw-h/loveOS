@@ -150,10 +150,18 @@ export default function TopControls({ role = "user" }: { role?: "user" | "admin"
 
                 {/* Eject button */}
                 <div className="w-full h-7 relative group">
-                    <button onClick={() => signOut({ callbackUrl: '/login' })}
-                        className="relative group font-mono text-[9px] font-bold tracking-widest uppercase outline-none cursor-pointer shrink-0">
+                    <button 
+                        onClick={() => {
+                            // 1. Wipe the hardware state so the boot animation plays next time
+                            if (typeof window !== 'undefined') {
+                                sessionStorage.removeItem("love-os-booted");
+                            }
+                            // 2. Actually log the user out of NextAuth
+                            signOut({ callbackUrl: '/login' });
+                        }}
+                        className="relative group font-mono text-[9px] font-bold tracking-widest uppercase outline-none cursor-pointer shrink-0 w-full h-full">
                         <div className="absolute inset-0 bg-red-950 rounded-[3px] translate-y-[2px]" />
-                        <div className="relative flex items-center gap-1.5 px-9.5 py-1 bg-[#0a0202] border border-red-500/40 text-red-500 rounded-[3px] transform -translate-y-[1px] transition-all duration-75 active:translate-y-[2px] active:bg-[#1a0505] hover:bg-[#150303] hover:text-red-400 hover:border-red-400 hover:shadow-[0_0_10px_rgba(239,68,68,0.3)]">
+                        <div className="relative flex items-center justify-center gap-1.5 w-full h-full bg-[#0a0202] border border-red-500/40 text-red-500 rounded-[3px] transform -translate-y-[1px] transition-all duration-75 active:translate-y-[2px] active:bg-[#1a0505] hover:bg-[#150303] hover:text-red-400 hover:border-red-400 hover:shadow-[0_0_10px_rgba(239,68,68,0.3)]">
                             <span className="w-1.5 h-1.5 rounded-full bg-red-600 shadow-[0_0_4px_red] group-hover:bg-red-400 group-hover:animate-pulse" />
                             EJECT
                         </div>

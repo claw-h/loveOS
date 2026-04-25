@@ -85,7 +85,7 @@ export default function BoyfriendDashboard() {
     const [secretMessage, setSecretMessage] = useState("");
     const [isSendingSecret, setIsSendingSecret] = useState(false);
 
-    const SYS_COLOR = "#0ea5e9"; // Cyber Cyan
+    const SYS_COLOR = "#4169E1"; // Cyber Cyan
 
     useEffect(() => {
         setIsMounted(true);

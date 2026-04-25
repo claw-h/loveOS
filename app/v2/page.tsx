@@ -11,6 +11,7 @@ import Link from 'next/link';
 import VaultPortal from '@/components/VaultPortal';
 import MissionControlConsole from '@/components/MissionControlConsole';
 import SystemVitals from '@/components/SystemVitals';
+import ProfileModal from '@/components/ProfileModal';
 
 // Initialize Supabase
 const supabase = createClient(
@@ -154,7 +155,7 @@ const CommandRack = ({ activeTab, setActiveTab }: { activeTab: TabId | null, set
 
     return (
         <motion.div 
-            className="fixed left-0 top-0 h-full w-70 z-100 flex items-center will-change-transform"
+            className="fixed left-0 top-0 h-full w-70 z-[100] flex items-center will-change-transform"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             animate={{ x: isHovered ? 0 : -280 }} 
@@ -550,8 +551,38 @@ const CrtBootScreen = ({ onBootComplete }: { onBootComplete: () => void }) => {
     );
 };
 
+// --- STAGGERED REVEAL VARIANTS ---
+const dashboardContainer = {
+    hidden: { opacity: 0 },
+    booting: {
+        opacity: 1,
+        transition: { staggerChildren: 0.15, delayChildren: 0.2 }
+    },
+    awake: { 
+        opacity: 1, 
+        transition: { duration: 0.8, ease: "easeOut" } 
+    }
+};
+
+const dashboardItem = {
+    hidden: { opacity: 0, y: 20, filter: "blur(10px)" },
+    booting: { 
+        opacity: 1, y: 0, filter: "blur(0px)", 
+        transition: { type: "spring", stiffness: 70, damping: 20 } 
+    },
+    awake: { 
+        opacity: 1, y: 0, filter: "blur(0px)", 
+        transition: { duration: 0 } 
+    }
+};
+
 export default function DashboardPageV2() {
+    // Session State Management
+    const [isClient, setIsClient] = useState(false);
     const [isBooting, setIsBooting] = useState(true);
+    const [hasBootedBefore, setHasBootedBefore] = useState(false);
+    
+    // Core State
     const [currentMood, setCurrentMood] = useState(moods[0]);
     const [moodFlash, setMoodFlash] = useState(0); 
     const [pinging, setPinging] = useState(false);
@@ -564,6 +595,26 @@ export default function DashboardPageV2() {
     const [allMemories, setAllMemories] = useState<any[]>([]);
     const [selectedMemory, setSelectedMemory] = useState<any>(null);
     const [activeTab, setActiveTab] = useState<TabId | null>('uptime');
+    const [showProfile, setShowProfile] = useState(false);
+
+    // Mount logic: Safely check sessionStorage to bypass the loading screen
+    useEffect(() => {
+        setIsClient(true);
+        if (typeof window !== 'undefined') {
+            const bootFlag = sessionStorage.getItem("love-os-booted");
+            if (bootFlag) {
+                setIsBooting(false);
+                setHasBootedBefore(true);
+            }
+        }
+    }, []);
+
+    // Called precisely when the heavy loading screen text is done
+    const handleBootComplete = () => {
+        sessionStorage.setItem("love-os-booted", "true");
+        setIsBooting(false);
+        setHasBootedBefore(false); // Triggers the "booting" staggered reveal
+    };
 
     useEffect(() => { document.documentElement.style.setProperty('--accent', currentMood.color); }, [currentMood]);
 
@@ -637,7 +688,7 @@ export default function DashboardPageV2() {
     return (
         <div className="h-screen w-screen overflow-hidden flex flex-col font-sans bg-[#07040D] text-[#F5F5F0] relative selection:bg-[#E8DEB5] selection:text-[#0A0612]">
             
-            <style jsx global>{`
+            <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=League+Gothic&display=swap');
                 @font-face { font-family: 'Victorian Parlor'; src: url('/fonts/VictorianParlor.ttf') format('truetype'); font-weight: normal; font-style: normal; }
                 .font-victorian { font-family: 'Victorian Parlor', serif; }
@@ -670,20 +721,25 @@ export default function DashboardPageV2() {
 
             <div className="pointer-events-none absolute inset-0 z-40 bg-[radial-gradient(circle_at_center,transparent_0%,#030108_120%)] opacity-80" />
 
-            <TopControls />
-            <CommandRack activeTab={activeTab} setActiveTab={setActiveTab} />
+            {/* Conditionally reveal TopControls & CommandRack after boot */}
+            {!isBooting && <TopControls />}
+            {!isBooting && <CommandRack activeTab={activeTab} setActiveTab={setActiveTab} />}
 
+            {/* Conditional CRT Boot Screen with SSR Hydration Check */}
             <AnimatePresence>
-                {isBooting && (
-                    <CrtBootScreen onBootComplete={() => setIsBooting(false)} />
+                {isClient && isBooting && !hasBootedBefore && (
+                    <CrtBootScreen onBootComplete={handleBootComplete} />
                 )}
             </AnimatePresence>
 
+            {/* The Staggered Dashboard Grid */}
             <motion.div 
+                variants={dashboardContainer}
+                initial="hidden"
+                animate={!isBooting ? (hasBootedBefore ? "awake" : "booting") : "hidden"}
                 className="flex flex-col h-full w-full z-10 relative max-w-[1700px] mx-auto p-4 md:p-8 px-8 md:px-20 gap-8" 
-                initial={{ opacity: 0 }} animate={!isBooting ? { opacity: 1 } : { opacity: 0 }} transition={{ duration: 1.5 }}
             >
-                <header className="w-full flex justify-between items-center shrink-0 pl-2">
+                <motion.header variants={dashboardItem} className="w-full flex justify-between items-center shrink-0 pl-2">
                     <div className="flex items-center gap-6">
                         <CoreNebula mood={currentMood} />
                         <div className="relative perspective-[1000px] w-[320px] h-[70px] flex items-center">
@@ -693,11 +749,38 @@ export default function DashboardPageV2() {
                             </h1>
                         </div>
                     </div>
-                </header>
+                    <motion.button
+                        onClick={() => setShowProfile(true)}
+                        whileTap={{ scale: 0.97 }}
+                        className="relative mr-24 mt-12 group outline-none"
+                    >
+                        <div className="p-[3px] bg-[#161616] rounded-md border border-[#2a2a2a] shadow-[0_15px_30px_rgba(0,0,0,0.9),inset_0_1px_1px_rgba(255,255,255,0.05)] flex items-center gap-[6px] px-2 h-6 relative">
+                            <div className="absolute top-[2px] left-[2px] w-[2px] h-[2px] bg-black rounded-full shadow-[0_1px_0_rgba(255,255,255,0.1)]" />
+                            <div className="absolute top-[2px] right-[2px] w-[2px] h-[2px] bg-black rounded-full shadow-[0_1px_0_rgba(255,255,255,0.1)]" />
+                            <div className="absolute bottom-[2px] left-[2px] w-[2px] h-[2px] bg-black rounded-full shadow-[0_1px_0_rgba(255,255,255,0.1)]" />
+                            <div className="absolute bottom-[2px] right-[2px] w-[2px] h-[2px] bg-black rounded-full shadow-[0_1px_0_rgba(255,255,255,0.1)]" />
+                            <div className="relative flex h-1.5 w-1.5 items-center justify-center shrink-0">
+                                <motion.span
+                                    animate={{ opacity: [0.3, 1, 0.3] }}
+                                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                                    className="absolute inline-flex h-full w-full rounded-full blur-[2px]"
+                                    style={{ backgroundColor: currentMood.color }}
+                                />
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5"
+                                    style={{ backgroundColor: currentMood.color, boxShadow: `0 0 5px 1px ${currentMood.color}` }} />
+                            </div>
+                            <span className="font-mono text-[9px] font-bold tracking-[0.2em] uppercase transition-colors duration-200"
+                                style={{ color: currentMood.color, textShadow: `0 0 6px ${currentMood.color}80` }}>
+                                IDENTITY
+                            </span>
+                            <span className="text-[10px] leading-none">{currentMood.emoji}</span>
+                        </div>
+                    </motion.button>
+                </motion.header>
 
                 <div className="flex-1 flex overflow-hidden gap-8">
                     
-                    <div className="flex-1 flex flex-col h-full relative z-10">
+                    <motion.div variants={dashboardItem} className="flex-1 flex flex-col h-full relative z-10">
                         <AnimatePresence>
                             {activeTab && (
                                 <AtmosphericCard moodFlash={moodFlash} bgClass="bg-black/30 backdrop-blur-xl border-white/[0.08]" key={`expanded-${activeTab}`} layoutId={`card-${activeTab}`} isExpanded={true} className="absolute inset-0 w-full h-full">
@@ -714,17 +797,14 @@ export default function DashboardPageV2() {
                                 </AtmosphericCard>
                             )}
                         </AnimatePresence>
-                    </div>
+                    </motion.div>
 
-                    <div className="w-full md:w-[300px] flex flex-col h-full gap-5 shrink-0 z-20 overflow-y-auto custom-scroll pr-1">
-                        
+                    <motion.div variants={dashboardItem} className="w-full md:w-[300px] flex flex-col h-full gap-5 shrink-0 z-20 overflow-y-auto custom-scroll pr-1">
                         <MissionControlConsole currentMood={currentMood} onMoodChange={handleMoodChange} />
-
                         <AtmosphericCard moodFlash={moodFlash} className="flex-1 shrink-0 min-h-[260px]">
-  <SystemVitals currentMood={currentMood} onLaunch={sendHug} isLaunching={pinging} />
-</AtmosphericCard>
-
-                    </div>
+                            <SystemVitals currentMood={currentMood} onLaunch={sendHug} isLaunching={pinging} />
+                        </AtmosphericCard>
+                    </motion.div>
 
                 </div>
 
@@ -737,6 +817,8 @@ export default function DashboardPageV2() {
                 </AnimatePresence>
 
             </motion.div>
+
+            <ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} />
         </div>
     );
 }

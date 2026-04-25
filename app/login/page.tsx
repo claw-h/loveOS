@@ -1,157 +1,230 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { signIn } from 'next-auth/react';
+import { signIn, getSession } from 'next-auth/react';
+
+const BOOT_SEQUENCE = [
+  { text: "CELESTIAL OS v9.2.4 INITIALIZING...", delay: 0,    dim: true  },
+  { text: "STELLAR RELAY: CONNECTED",            delay: 480,  dim: true  },
+  { text: "WARNING: RESTRICTED MAINFRAME.",      delay: 900,  warn: true },
+  { text: "PLEASE IDENTIFY YOURSELF.",           delay: 1340, accent: true },
+];
 
 export default function LoginPage() {
-    const [password, setPassword] = useState("");
-    const [status, setStatus] = useState<"idle" | "authenticating" | "granted" | "denied">("idle");
-    const [bootText, setBootText] = useState("");
+  const [step,      setStep]      = useState<'username' | 'password'>('username');
+  const [username,  setUsername]  = useState('');
+  const [password,  setPassword]  = useState('');
+  const [status,    setStatus]    = useState<'idle' | 'loading' | 'granted' | 'denied'>('idle');
+  const [bootLines, setBootLines] = useState<typeof BOOT_SEQUENCE>([]);
+  const [ready,     setReady]     = useState(false);
+  const [profile,   setProfile]   = useState<{ name: string; emoji: string; color: string } | null>(null);
 
-    const SYS_COLOR = "#ec4899"; // Pink for Mahi's portal vibe
+  const inputRef = useRef<HTMLInputElement>(null);
 
-    // Cool terminal typing effect on load
-    useEffect(() => {
-        const sequence = [
-            "INITIALIZING SECURE CONNECTION...",
-            "ESTABLISHING HANDSHAKE...",
-            "WARNING: RESTRICTED MAINFRAME.",
-            "PLEASE IDENTIFY YOURSELF."
-        ];
-        let i = 0;
-        let currentText = "";
-        
-        const interval = setInterval(() => {
-            if (i < sequence.length) {
-                currentText += sequence[i] + "\n";
-                setBootText(currentText);
-                i++;
-            } else {
-                clearInterval(interval);
-            }
-        }, 600);
+  useEffect(() => {
+    BOOT_SEQUENCE.forEach((line, i) => {
+      setTimeout(() => {
+        setBootLines(prev => [...prev, line]);
+        if (i === BOOT_SEQUENCE.length - 1) setTimeout(() => setReady(true), 300);
+      }, line.delay + 200);
+    });
+  }, []);
 
-        return () => clearInterval(interval);
-    }, []);
+  useEffect(() => {
+    if (ready && status === 'idle') setTimeout(() => inputRef.current?.focus(), 80);
+  }, [ready, status]);
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!password) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-        setStatus("authenticating");
+    if (step === 'username') {
+      if (!username.trim()) return;
+      setStep('password');
+      setTimeout(() => inputRef.current?.focus(), 50);
+      return;
+    }
 
-        // NOTE: If you are using standard Credentials provider in NextAuth, this will trigger it.
-        // Change 'credentials' to whatever provider you set up in [...nextauth].ts if needed!
-        const result = await signIn('credentials', {
-            redirect: false,
-            password: password,
-        });
+    if (!password.trim()) return;
+    setStatus('loading');
 
-        if (result?.error) {
-            setStatus("denied");
-            setPassword("");
-            setTimeout(() => setStatus("idle"), 3000);
-        } else {
-            setStatus("granted");
-            // Give it 2 seconds to show the cool green "ACCESS GRANTED" animation before redirecting
-            setTimeout(() => {
-                window.location.href = '/'; // Or wherever her portal lives!
-            }, 2000);
-        }
-    };
+    const result = await signIn('credentials', {
+      redirect: false,
+      username: username.trim().toLowerCase(),
+      password,
+    });
 
-    return (
-        <div className="h-screen w-screen bg-[#050505] flex items-center justify-center p-6 relative overflow-hidden font-mono text-white selection:bg-pink-500/30">
-            
-            <style jsx global>{`
-                @keyframes scanline {
-                    0% { transform: translateY(-100%); }
-                    100% { transform: translateY(100vh); }
-                }
-                .animate-scanline {
-                    animation: scanline 8s linear infinite;
-                }
-                @keyframes blink {
-                    0%, 100% { opacity: 1; }
-                    50% { opacity: 0; }
-                }
-                .animate-blink {
-                    animation: blink 1s step-end infinite;
-                }
-            `}</style>
+    if (result?.error) {
+      setStatus('denied');
+      setTimeout(() => {
+        setStatus('idle');
+        setStep('username');
+        setUsername('');
+        setPassword('');
+      }, 2400);
+    } else {
+      const session = await getSession();
+      const user    = session?.user as any;
 
-            {/* Old CRT Monitor Effects */}
-            <div className="absolute inset-0 pointer-events-none z-50 opacity-10 bg-[linear-gradient(rgba(255,255,255,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%]"></div>
-            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-white/5 to-transparent opacity-20 animate-scanline pointer-events-none z-40"></div>
-            
-            <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 1 }}
-                className="w-full max-w-lg z-10"
-            >
-                {/* Terminal Window */}
-                <div className="border border-white/10 bg-black/60 backdrop-blur-xl rounded-lg overflow-hidden shadow-[0_0_50px_rgba(236,72,153,0.1)] relative">
-                    
-                    {/* Fake Window Header */}
-                    <div className="bg-white/5 border-b border-white/10 px-4 py-2 flex items-center justify-between">
-                        <div className="flex gap-2">
-                            <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
-                            <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
-                            <div className="w-3 h-3 rounded-full bg-green-500/50"></div>
-                        </div>
-                        <span className="text-[10px] text-white/40 uppercase tracking-widest">login.exe</span>
+      setProfile({
+        name:  user?.name        || username,
+        emoji: user?.avatarEmoji || '✦',
+        color: user?.accentColor || '#ec4899',
+      });
+      setStatus('granted');
+
+      setTimeout(() => {
+        if (user?.id === 'architect-01') window.location.href = '/boyfriend';
+        else                              window.location.href = '/v2';
+      }, 2200);
+    }
+  };
+
+  const lineStyle = (line: typeof BOOT_SEQUENCE[0]) => {
+    if (line.accent) return { color: '#ec4899', textShadow: '0 0 8px #ec4899' };
+    if (line.warn)   return { color: '#f59e0b', textShadow: 'none' };
+    return               { color: 'rgba(236,72,153,0.45)', textShadow: 'none' };
+  };
+
+  return (
+    <div className="h-screen w-screen bg-[#040404] flex items-center justify-center p-6 overflow-hidden font-mono text-white selection:bg-pink-500/30">
+
+      <style jsx global>{`
+        @keyframes scanline  { 0% { transform: translateY(-100%); } 100% { transform: translateY(100vh); } }
+        @keyframes blink     { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        .scanline { animation: scanline 9s linear infinite; }
+        .blink    { animation: blink 1s step-end infinite; }
+      `}</style>
+
+      <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-white/[0.05] to-transparent scanline pointer-events-none z-40" />
+      <div className="absolute inset-0 pointer-events-none z-30 opacity-[0.08]"
+        style={{ backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 1px,#000 1px,#000 2px)' }} />
+      <div className="absolute inset-0 pointer-events-none z-0"
+        style={{ background: 'radial-gradient(ellipse at 50% 55%, rgba(236,72,153,0.07) 0%, transparent 68%)' }} />
+
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0  }}
+        transition={{ duration: 0.9 }}
+        className="w-full max-w-md z-10"
+      >
+        <div className="rounded-xl overflow-hidden border border-white/[0.08]"
+          style={{ background: 'rgba(5,3,10,0.94)', backdropFilter: 'blur(24px)', boxShadow: '0 0 60px rgba(236,72,153,0.07), 0 40px 80px rgba(0,0,0,0.6)' }}>
+
+          {/* Title bar */}
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]"
+            style={{ background: 'rgba(255,255,255,0.025)' }}>
+            <div className="flex gap-1.5">
+              {['#ff5f57','#ffbd2e','#28c840'].map(c => (
+                <div key={c} className="w-2.5 h-2.5 rounded-full opacity-50" style={{ backgroundColor: c }} />
+              ))}
+            </div>
+            <span className="text-[8px] tracking-[0.5em] uppercase text-white/20">celestial_auth.exe</span>
+            <div className="w-12" />
+          </div>
+
+          <div className="p-7 md:p-9 min-h-[320px] flex flex-col">
+
+            {/* Boot lines */}
+            <div className="flex flex-col gap-1.5 mb-7">
+              {bootLines.map((line, i) => (
+                <motion.div key={i}
+                  initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.18 }}
+                  className="text-[10px] md:text-[11px] tracking-[0.18em] uppercase"
+                  style={lineStyle(line)}>
+                  {line.text}
+                </motion.div>
+              ))}
+            </div>
+
+            {/* ACCESS GRANTED — avatar reveal */}
+            <AnimatePresence>
+              {status === 'granted' && profile && (
+                <motion.div key="granted"
+                  initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
+                  className="flex-1 flex flex-col items-center justify-center gap-5 pb-4">
+
+                  <motion.div
+                    initial={{ scale: 0, rotate: -30 }}
+                    animate={{ scale: 1, rotate: 0   }}
+                    transition={{ type: 'spring', stiffness: 280, damping: 16, delay: 0.1 }}
+                    className="w-24 h-24 rounded-full flex items-center justify-center text-5xl border-2"
+                    style={{
+                      borderColor:     profile.color,
+                      backgroundColor: `${profile.color}15`,
+                      boxShadow:       `0 0 40px ${profile.color}50, 0 0 80px ${profile.color}20`,
+                    }}>
+                    {profile.emoji}
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}
+                    className="text-center flex flex-col gap-1.5">
+                    <div className="text-[9px] tracking-[0.5em] uppercase text-green-400">ACCESS GRANTED</div>
+                    <div className="text-2xl font-black tracking-tight"
+                      style={{ color: profile.color, textShadow: `0 0 20px ${profile.color}80` }}>
+                      WELCOME BACK, {profile.name.toUpperCase()}
                     </div>
-
-                    <div className="p-6 md:p-8 min-h-[300px] flex flex-col">
-                        
-                        {/* Status Outputs */}
-                        <div className="whitespace-pre-line text-sm md:text-base text-pink-400/80 leading-relaxed mb-8 flex-1">
-                            {bootText}
-                            
-                            <AnimatePresence mode="wait">
-                                {status === "authenticating" && (
-                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 text-yellow-400">
-                                        &gt; VERIFYING ENCRYPTION KEYS...
-                                    </motion.div>
-                                )}
-                                {status === "denied" && (
-                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 text-red-500 font-bold">
-                                        &gt; ERROR 401: UNAUTHORIZED. INTRUDER DETECTED.
-                                    </motion.div>
-                                )}
-                                {status === "granted" && (
-                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 text-green-400 font-bold">
-                                        &gt; BIOMETRICS CONFIRMED. WELCOME BACK.
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-
-                        {/* Input Form */}
-                        {status !== "granted" && (
-                            <form onSubmit={handleLogin} className="mt-auto relative">
-                                <div className="flex items-center text-xl md:text-2xl text-white/80">
-                                    <span className="text-pink-500 mr-3">&gt;</span>
-                                    <input
-                                        type="password"
-                                        autoFocus
-                                        disabled={status === "authenticating"}
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="bg-transparent border-none outline-none w-full text-white placeholder-white/20 tracking-widest"
-                                        placeholder="ENTER_PASSPHRASE"
-                                    />
-                                    {/* Fake Blinking Cursor */}
-                                    <span className="w-3 h-6 bg-pink-500 ml-1 animate-blink inline-block"></span>
-                                </div>
-                                <div className="h-px w-full bg-gradient-to-r from-pink-500/50 to-transparent mt-2"></div>
-                            </form>
-                        )}
+                    <div className="text-[8px] tracking-[0.4em] uppercase text-white/25 mt-0.5">
+                      INITIALIZING PORTAL...
                     </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Status messages */}
+            <AnimatePresence>
+              {status === 'denied' && (
+                <motion.div key="denied"
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="text-[10px] tracking-[0.25em] uppercase text-red-500 font-bold mb-4">
+                  &gt; ACCESS DENIED. IDENTITY UNRECOGNIZED.
+                </motion.div>
+              )}
+              {status === 'loading' && (
+                <motion.div key="loading"
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="text-[10px] tracking-[0.25em] uppercase text-amber-400/80 mb-4">
+                  &gt; VERIFYING CREDENTIALS...
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Input */}
+            {(status === 'idle' || status === 'denied') && ready && (
+              <div className="mt-auto flex flex-col gap-2">
+                {step === 'password' && (
+                  <div className="flex items-center gap-3 text-lg text-white/25">
+                    <span style={{ color: 'rgba(236,72,153,0.4)' }}>&gt;</span>
+                    <span className="tracking-widest">{username}</span>
+                  </div>
+                )}
+                <form onSubmit={handleSubmit}>
+                  <div className="flex items-center gap-3 text-lg md:text-xl">
+                    <span style={{ color: '#ec4899', textShadow: '0 0 8px #ec4899' }}>&gt;</span>
+                    <input
+                      ref={inputRef}
+                      type={step === 'password' ? 'password' : 'text'}
+                      value={step === 'password' ? password : username}
+                      onChange={e => step === 'password' ? setPassword(e.target.value) : setUsername(e.target.value)}
+                      autoComplete="off" autoCapitalize="off" spellCheck={false}
+                      placeholder={step === 'username' ? 'ENTER_IDENTIFIER' : 'ENTER_PASSPHRASE'}
+                      className="bg-transparent border-none outline-none flex-1 tracking-widest text-white placeholder-white/15"
+                    />
+                    <span className="w-2.5 h-5 blink shrink-0" style={{ backgroundColor: '#ec4899' }} />
+                  </div>
+                  <div className="h-px mt-2"
+                    style={{ background: 'linear-gradient(to right, #ec489999, transparent)' }} />
+                </form>
+                <div className="text-[7px] tracking-[0.35em] uppercase text-white/15 mt-1">
+                  {step === 'username' ? 'TYPE IDENTIFIER & PRESS ENTER' : 'TYPE PASSPHRASE & PRESS ENTER'}
                 </div>
-            </motion.div>
+              </div>
+            )}
+          </div>
         </div>
-    );
+      </motion.div>
+    </div>
+  );
 }
