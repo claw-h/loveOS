@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, Variants } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
 import CelestialEvents from '@/components/CelestialEvents';
 import TopControls from '@/components/TopControls';
@@ -552,7 +552,7 @@ const CrtBootScreen = ({ onBootComplete }: { onBootComplete: () => void }) => {
 };
 
 // --- STAGGERED REVEAL VARIANTS ---
-const dashboardContainer = {
+const dashboardContainer: Variants = {
     hidden: { opacity: 0 },
     booting: {
         opacity: 1,
@@ -562,7 +562,7 @@ const dashboardContainer = {
         opacity: 1, 
         transition: { duration: 0.8, ease: "easeOut" } 
     }
-};
+} as const;
 
 const dashboardItem = {
     hidden: { opacity: 0, y: 20, filter: "blur(10px)" },
@@ -574,7 +574,7 @@ const dashboardItem = {
         opacity: 1, y: 0, filter: "blur(0px)", 
         transition: { duration: 0 } 
     }
-};
+} as const;
 
 export default function DashboardPageV2() {
     // Session State Management

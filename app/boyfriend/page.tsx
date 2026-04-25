@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
 import { signOut } from 'next-auth/react';
 import TopControls from '@/components/TopControls';
@@ -20,7 +20,7 @@ const containerVariants = {
     show: { opacity: 1, transition: { staggerChildren: 0.1 } }
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
     hidden: { opacity: 0, y: 40, scale: 0.95, filter: "blur(10px)" },
     show: { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", transition: { type: "spring", stiffness: 120, damping: 14 } }
 };

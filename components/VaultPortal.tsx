@@ -41,7 +41,7 @@ const VaultSphereCanvas = ({ accentColor, isHovered, memoryCount }: {
         .map((b, j) => ({ j, d: Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2) }))
         .filter(({ j }) => j !== i)
         .sort((a, b) => a.d - b.d);
-      [0, 1].forEach(({ j } = dists[0], k = 0) => {
+      dists.slice(0, 2).forEach(({ j }, k) => {
         const pair = dists[k];
         if (pair && !edges.some(([a, b]) => (a === i && b === pair.j) || (a === pair.j && b === i))) {
           edges.push([i, pair.j]);
