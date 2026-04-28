@@ -5,6 +5,8 @@ import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
 import { signOut } from 'next-auth/react';
 import TopControls from '@/components/TopControls';
+import { useNotification } from '@/lib/useNotification';
+import { usePresence } from '@/lib/usePresence';
 
 <header><TopControls role="admin" />
 </header>
@@ -63,6 +65,10 @@ export default function BoyfriendDashboard() {
     const [currentTime, setCurrentTime] = useState("");
     const [partnerMood, setPartnerMood] = useState<string>("AWAITING_DATA...");
     const [lastSync, setLastSync] = useState<string>("Never");
+    
+    // Notification hooks
+    const { notify, addOfflineNotification } = useNotification();
+    const otherOnline = usePresence('admin');
     
     // Directive State
     const [newQuote, setNewQuote] = useState("");
@@ -142,16 +148,21 @@ export default function BoyfriendDashboard() {
                     if (payload.new.interaction_type === 'GIRLFRIEND_PING') {
                         console.log("🚨 ATTENTION REQUESTED BY PARTNER");
                         setGirlfriendPing(true);
-                        
-                        // Keep the alarm on for 3 seconds
                         setTimeout(() => setGirlfriendPing(false), 3000);
+
+                        // Notification system: live ping if online, persistent if offline
+                        if (otherOnline) {
+                            notify('💫 MAHI PINGED', { sender: 'MAHI_PORTAL' });
+                        } else {
+                            addOfflineNotification('💫 MAHI PINGED', { sender: 'MAHI_PORTAL' });
+                        }
                     }
                 }
             )
             .subscribe();
 
         return () => { supabase.removeChannel(pingChannel); };
-    }, []);
+    }, [otherOnline, notify, addOfflineNotification]);
     const handleOverride = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newQuote.trim()) return;
@@ -240,6 +251,14 @@ export default function BoyfriendDashboard() {
     const sendPing = async () => {
         setPinging(true);
         await supabase.from('interactions').insert([{ interaction_type: 'BOYFRIEND_PING', sender: 'SYS_ADMIN' }]);
+        
+        // Notification system: trigger live toast if online, else store as persistent
+        if (otherOnline) {
+            notify('💌 PING SENT TO MAHI', { duration: 2000 });
+        } else {
+            addOfflineNotification('💌 MAHI NOT ONLINE - PING STORED');
+        }
+        
         setTimeout(() => setPinging(false), 3000);
     };
 

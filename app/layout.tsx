@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./Providers";
 import { Analytics } from "@vercel/analytics/next";
+import { NotificationCenter } from "@/components/NotificationCenter";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,6 +31,7 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <NotificationCenter />
         <Analytics />
       </body>
     </html>

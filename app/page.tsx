@@ -5,6 +5,8 @@ import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
 import { signOut } from 'next-auth/react';
 import CupidBot from "@/components/CupidBot";
+import { useNotification } from '@/lib/useNotification';
+import { usePresence } from '@/lib/usePresence';
 
 // Initialize Supabase Mainframe
 const supabase = createClient(
@@ -143,6 +145,10 @@ export default function DashboardPage() {
     const [currentDate, setCurrentDate] = useState("");
     const [newsIndex, setNewsIndex] = useState(0);
 
+    // Notification hooks
+    const { notify, addOfflineNotification } = useNotification();
+    const otherOnline = usePresence('user');
+
     // Boot Sequence
     useEffect(() => {
         const sequence = ["BIOS Check... OK", "Mounting /dev/sda1... OK", "Loading LOVE_OS Kernel...", "Establishing Secure Connection...", "Decrypting Vitals...", "Welcome to MAHI_PORTAL v3.0"];
@@ -207,10 +213,17 @@ export default function DashboardPage() {
             if (payload.new.interaction_type === 'BOYFRIEND_PING') {
                 setGlobalFlicker(true); setIncomingPing(true);
                 setTimeout(() => { setGlobalFlicker(false); setIncomingPing(false); }, 2000);
+
+                // Notification system: live ping if online, persistent if offline
+                if (otherOnline) {
+                    notify('💌 BOYFRIEND PINGED', { sender: 'SYS_ADMIN' });
+                } else {
+                    addOfflineNotification('💌 BOYFRIEND PINGED', { sender: 'SYS_ADMIN' });
+                }
             }
         }).subscribe();
         return () => { supabase.removeChannel(pingChannel); };
-    }, []);
+    }, [otherOnline, notify, addOfflineNotification]);
 
     useEffect(() => {
         const cipherChannel = supabase.channel('cipher-listener').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'secure_messages' }, (payload) => {
@@ -243,6 +256,14 @@ export default function DashboardPage() {
     const sendHug = async () => {
         setPinging(true);
         await supabase.from('interactions').insert([{ interaction_type: 'GIRLFRIEND_PING', sender: 'MAHI_PORTAL' }]);
+        
+        // Notification system: trigger live toast if online, else store as persistent
+        if (otherOnline) {
+            notify('💫 HUG SENT TO ADMIN', { duration: 2000 });
+        } else {
+            addOfflineNotification('💫 ADMIN NOT ONLINE - HUG STORED');
+        }
+        
         setTimeout(() => setPinging(false), 3000);
     };
 

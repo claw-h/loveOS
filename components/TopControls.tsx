@@ -1,9 +1,13 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useContext, lazy, Suspense } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
 import { createClient } from '@supabase/supabase-js';
+import { NotificationContext } from '@/lib/notificationContext';
+
+
+const ProfileModal = lazy(() => import('@/components/ProfileModal'));
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -15,8 +19,11 @@ const supabase = createClient(
 // His dashboard passes role="admin".
 export default function TopControls({ role = "user" }: { role?: "user" | "admin" }) {
     const [time, setTime] = useState<Date | null>(null);
-    // For her side: is admin online? For his side: is the user online?
     const [otherOnline, setOtherOnline] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [profileOpen, setProfileOpen] = useState(false);
+    const notificationContext = useContext(NotificationContext);
+    const { data: session } = useSession();
 
     useEffect(() => {
         setTime(new Date());
@@ -129,45 +136,147 @@ export default function TopControls({ role = "user" }: { role?: "user" | "admin"
 
             </div>
 
-            {/* RIGHT: High-Fidelity Hardware Control Panel */}
-            <div className="p-[3px] bg-[#161616] rounded-md border border-[#2a2a2a] shadow-[0_15px_30px_rgba(0,0,0,0.9),inset_0_1px_1px_rgba(255,255,255,0.05)] flex flex-col gap-[3px] w-[130px] relative">
+            {/* RIGHT: Control Panel with Curtain Menu */}
+            <div className="flex flex-col gap-2 w-44">
                 
-                <div className="absolute top-[2px] left-[2px] w-[2px] h-[2px] bg-black rounded-full shadow-[0_1px_0_rgba(255,255,255,0.1)]" />
-                <div className="absolute top-[2px] right-[2px] w-[2px] h-[2px] bg-black rounded-full shadow-[0_1px_0_rgba(255,255,255,0.1)]" />
-                <div className="absolute bottom-[2px] left-[2px] w-[2px] h-[2px] bg-black rounded-full shadow-[0_1px_0_rgba(255,255,255,0.1)]" />
-                <div className="absolute bottom-[2px] right-[2px] w-[2px] h-[2px] bg-black rounded-full shadow-[0_1px_0_rgba(255,255,255,0.1)]" />
-
                 {/* LED Clock */}
-                <div className="w-full h-8 bg-[#020202] rounded-[3px] shadow-[inset_0_3px_8px_rgba(0,0,0,1),0_1px_0_rgba(255,255,255,0.05)] border border-black relative overflow-hidden flex items-center justify-center">
-                    <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-white/[0.08] to-transparent z-10 pointer-events-none" />
-                    <div className="font-mono text-[12px] font-bold tracking-[0.15em] relative z-20 mt-[1px]"
-                        style={{ color: 'var(--accent, #fff)', textShadow: '0 0 4px var(--accent, rgba(255,255,255,0.8)), 0 0 10px var(--accent, rgba(255,255,255,0.3))' }}>
+                <div className="w-full h-8 bg-[#020202] rounded border border-white/10 shadow-sm relative overflow-hidden flex items-center justify-center">
+                    <div className="absolute top-0 inset-x-0 h-1/2 bg-linear-to-b from-white/5 to-transparent z-10 pointer-events-none" />
+                    <div className="font-mono text-[12px] font-bold tracking-[0.15em] relative z-20 mt-px"
+                        style={{ color: 'var(--accent, #fff)' }}>
                         {displayTime}
                     </div>
-                    <div className="absolute inset-0 z-30 pointer-events-none mix-blend-overlay opacity-40"
-                        style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 1px, #000 1px, #000 2px)' }} />
                 </div>
 
-                {/* Eject button */}
-                <div className="w-full h-7 relative group">
-                    <button 
-                        onClick={() => {
-                            // 1. Wipe the hardware state so the boot animation plays next time
-                            if (typeof window !== 'undefined') {
-                                sessionStorage.removeItem("love-os-booted");
-                            }
-                            // 2. Actually log the user out of NextAuth
-                            signOut({ callbackUrl: '/login' });
-                        }}
-                        className="relative group font-mono text-[9px] font-bold tracking-widest uppercase outline-none cursor-pointer shrink-0 w-full h-full">
-                        <div className="absolute inset-0 bg-red-950 rounded-[3px] translate-y-[2px]" />
-                        <div className="relative flex items-center justify-center gap-1.5 w-full h-full bg-[#0a0202] border border-red-500/40 text-red-500 rounded-[3px] transform -translate-y-[1px] transition-all duration-75 active:translate-y-[2px] active:bg-[#1a0505] hover:bg-[#150303] hover:text-red-400 hover:border-red-400 hover:shadow-[0_0_10px_rgba(239,68,68,0.3)]">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-600 shadow-[0_0_4px_red] group-hover:bg-red-400 group-hover:animate-pulse" />
-                            EJECT
-                        </div>
+                {/* CURTAIN MENU BUTTON - pulls down to reveal three buttons */}
+                <motion.div className="relative">
+                    <button
+                        onClick={() => setMenuOpen(!menuOpen)}
+                        className="w-full h-8 px-3 bg-white/5 border border-white/20 rounded font-mono text-[9px] font-bold tracking-widest uppercase text-white/80 hover:bg-white/8 hover:border-white/30 transition-all duration-200 flex items-center justify-center gap-1"
+                    >
+                        <span>{menuOpen ? '▲' : '▼'}</span>
+                        <span>MENU</span>
                     </button>
-                </div>
+
+                    {/* Curtain Content - slides down */}
+                    <AnimatePresence>
+                        {menuOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, scaleY: 0, y: -10, originY: 0 }}
+                                animate={{ opacity: 1, scaleY: 1, y: 0 }}
+                                exit={{ opacity: 0, scaleY: 0, y: -10 }}
+                                transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                                className="absolute top-full left-0 right-0 mt-1 bg-white/3 border border-white/15 rounded shadow-lg overflow-hidden z-50 backdrop-blur-sm flex flex-col gap-1 p-2"
+                            >
+                                
+
+                                {/* NOTIFICATIONS BUTTON */}
+                                <button
+                                    className="w-full h-8 px-3 bg-white/5 border border-white/20 rounded font-mono text-[9px] font-bold tracking-widest uppercase text-white/80 hover:bg-white/8 hover:border-white/30 transition-all duration-200 flex items-center justify-between"
+                                >
+                                    <span>📡 ALERTS</span>
+                                    {notificationContext?.offlineNotifications?.length ? (
+                                        <span className="text-[10px] font-bold" style={{ color: 'var(--accent)' }}>
+                                            {notificationContext.offlineNotifications.length}
+                                        </span>
+                                    ) : null}
+                                </button>
+
+
+
+                                
+                                {/* IDENTITY BUTTON */}
+                                <button
+                                    onClick={() => { setProfileOpen(true); setMenuOpen(false); }}
+                                    className="w-full h-8 px-3 bg-white/5 border border-white/20 rounded font-mono text-[9px] font-bold tracking-widest uppercase text-white/80 hover:bg-white/8 hover:border-white/30 transition-all duration-200"
+                                >
+                                    ⟡ IDENTITY
+                                </button>
+
+
+
+                                
+                                {/* LOGOUT BUTTON */}
+                                <button
+                                    onClick={() => {
+                                        if (typeof window !== 'undefined') {
+                                            sessionStorage.removeItem("love-os-booted");
+                                        }
+                                        signOut({ callbackUrl: '/login' });
+                                    }}
+                                    className="w-full h-8 px-3 bg-red-500/15 border border-red-500/30 rounded font-mono text-[9px] font-bold tracking-widest uppercase text-red-400/80 hover:bg-red-500/25 hover:border-red-500/50 transition-all duration-200"
+                                >
+                                    ⟲ LOGOUT
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </motion.div>
+
+                {/* ALERTS DETAIL MODAL - shows offline notifications */}
+                <AnimatePresence>
+                    {menuOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ delay: 0.1 }}
+                            className="relative mt-1 bg-white/3 border border-white/15 rounded shadow-lg overflow-hidden z-50 backdrop-blur-sm"
+                        >
+                            <div className="max-h-48 overflow-y-auto">
+                                {notificationContext?.offlineNotifications && notificationContext.offlineNotifications.length > 0 ? (
+                                    notificationContext.offlineNotifications.map(notif => (
+                                        <motion.div
+                                            key={notif.id}
+                                            initial={{ opacity: 0, x: -5 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: 5 }}
+                                            className="px-3 py-2 border-b border-white/10 text-[8px] hover:bg-white/5 transition-colors flex gap-2 group last:border-0"
+                                        >
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-mono font-bold truncate text-white/80">
+                                                    {notif.title}
+                                                </div>
+                                                {notif.timestamp && (
+                                                    <div className="text-[7px] text-white/40 mt-0.5">
+                                                        {new Date(notif.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={() => notificationContext.dismissOfflineNotification(notif.id)}
+                                                className="text-white/30 hover:text-white/60 transition-colors opacity-0 group-hover:opacity-100 shrink-0 text-xs leading-none pt-0.5"
+                                            >
+                                                ×
+                                            </button>
+                                        </motion.div>
+                                    ))
+                                ) : (
+                                    <div className="px-3 py-3 text-center">
+                                        <p className="font-mono text-[7px] text-white/30 uppercase">NO ALERTS</p>
+                                    </div>
+                                )}
+                            </div>
+                            {notificationContext?.offlineNotifications && notificationContext.offlineNotifications.length > 0 && (
+                                <button
+                                    onClick={() => {
+                                        notificationContext.offlineNotifications.forEach(n => 
+                                            notificationContext.dismissOfflineNotification(n.id)
+                                        );
+                                    }}
+                                    className="w-full px-3 py-1.5 border-t border-white/10 text-[7px] font-mono tracking-widest uppercase hover:bg-white/5 transition-colors text-white/60"
+                                >
+                                    CLEAR ALL
+                                </button>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
             </div>
-        </div>
-    );
-}
+
+            {/* Profile Modal - opened from IDENTITY button */}
+            <Suspense fallback={null}>
+                <ProfileModal isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
+            </Suspense>
+        </div>);}   

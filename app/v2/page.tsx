@@ -8,6 +8,8 @@ import TopControls from '@/components/TopControls';
 import ChronographEngine   from '@/components/Chronographengine';
 import TransmissionArchive from '@/components/Transmissionarchive';
 import Link from 'next/link';
+import { useNotification } from '@/lib/useNotification';
+import { usePresence } from '@/lib/usePresence';
 import VaultPortal from '@/components/VaultPortal';
 import MissionControlConsole from '@/components/MissionControlConsole';
 import SystemVitals from '@/components/SystemVitals';
@@ -597,6 +599,10 @@ export default function DashboardPageV2() {
     const [activeTab, setActiveTab] = useState<TabId | null>('uptime');
     const [showProfile, setShowProfile] = useState(false);
 
+    // Notification hooks
+    const { notify, addOfflineNotification } = useNotification();
+    const otherOnline = usePresence('user');
+
     // Mount logic: Safely check sessionStorage to bypass the loading screen
     useEffect(() => {
         setIsClient(true);
@@ -634,11 +640,19 @@ export default function DashboardPageV2() {
 
         const pingChannel = supabase.channel('ping-listener').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'interactions' }, (payload) => {
             if (payload.new.interaction_type === 'BOYFRIEND_PING') {
-                setIncomingPing(true); setTimeout(() => setIncomingPing(false), 2500);
+                setIncomingPing(true); 
+                setTimeout(() => setIncomingPing(false), 2500);
+
+                // Notification system: live ping if online, persistent if offline
+                if (otherOnline) {
+                    notify('💌 BOYFRIEND PINGED', { sender: 'SYS_ADMIN' });
+                } else {
+                    addOfflineNotification('💌 BOYFRIEND PINGED', { sender: 'SYS_ADMIN' });
+                }
             }
         }).subscribe();
         return () => { supabase.removeChannel(pingChannel); };
-    }, []);
+    }, [otherOnline, notify, addOfflineNotification]);
 
     const handleMoodChange = async (m: typeof moods[0]) => {
         setCurrentMood(m);
@@ -649,6 +663,14 @@ export default function DashboardPageV2() {
     const sendHug = async () => {
         setPinging(true);
         await supabase.from('interactions').insert([{ interaction_type: 'GIRLFRIEND_PING', sender: 'MAHI_PORTAL' }]);
+        
+        // Notification system: trigger live toast if online, else store as persistent
+        if (otherOnline) {
+            notify('💫 HUG SENT TO ADMIN', { duration: 2000 });
+        } else {
+            addOfflineNotification('💫 ADMIN NOT ONLINE - HUG STORED');
+        }
+        
         setTimeout(() => setPinging(false), 3000);
     };
 
@@ -749,33 +771,7 @@ export default function DashboardPageV2() {
                             </h1>
                         </div>
                     </div>
-                    <motion.button
-                        onClick={() => setShowProfile(true)}
-                        whileTap={{ scale: 0.97 }}
-                        className="relative mr-24 mt-12 group outline-none"
-                    >
-                        <div className="p-[3px] bg-[#161616] rounded-md border border-[#2a2a2a] shadow-[0_15px_30px_rgba(0,0,0,0.9),inset_0_1px_1px_rgba(255,255,255,0.05)] flex items-center gap-[6px] px-2 h-6 relative">
-                            <div className="absolute top-[2px] left-[2px] w-[2px] h-[2px] bg-black rounded-full shadow-[0_1px_0_rgba(255,255,255,0.1)]" />
-                            <div className="absolute top-[2px] right-[2px] w-[2px] h-[2px] bg-black rounded-full shadow-[0_1px_0_rgba(255,255,255,0.1)]" />
-                            <div className="absolute bottom-[2px] left-[2px] w-[2px] h-[2px] bg-black rounded-full shadow-[0_1px_0_rgba(255,255,255,0.1)]" />
-                            <div className="absolute bottom-[2px] right-[2px] w-[2px] h-[2px] bg-black rounded-full shadow-[0_1px_0_rgba(255,255,255,0.1)]" />
-                            <div className="relative flex h-1.5 w-1.5 items-center justify-center shrink-0">
-                                <motion.span
-                                    animate={{ opacity: [0.3, 1, 0.3] }}
-                                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                                    className="absolute inline-flex h-full w-full rounded-full blur-[2px]"
-                                    style={{ backgroundColor: currentMood.color }}
-                                />
-                                <span className="relative inline-flex rounded-full h-1.5 w-1.5"
-                                    style={{ backgroundColor: currentMood.color, boxShadow: `0 0 5px 1px ${currentMood.color}` }} />
-                            </div>
-                            <span className="font-mono text-[9px] font-bold tracking-[0.2em] uppercase transition-colors duration-200"
-                                style={{ color: currentMood.color, textShadow: `0 0 6px ${currentMood.color}80` }}>
-                                IDENTITY
-                            </span>
-                            <span className="text-[10px] leading-none">{currentMood.emoji}</span>
-                        </div>
-                    </motion.button>
+                    
                 </motion.header>
 
                 <div className="flex-1 flex overflow-hidden gap-8">
